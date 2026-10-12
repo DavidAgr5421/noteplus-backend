@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: noteplus
+      POSTGRES_PASSWORD: noteplus
+      POSTGRES_DB: noteplus
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noteplus"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://noteplus:noteplus@db:5432/noteplus
+      SYNC_DATABASE_URL: postgresql+psycopg2://noteplus:noteplus@db:5432/noteplus
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production-32chars!!}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-in-production-32chars!!}
+      JWT_EXPIRES_IN_MINUTES: 15
+      JWT_REFRESH_EXPIRES_IN_DAYS: 7
+      PORT: 8000
+      CORS_ORIGIN: http://localhost:5173
+      RATE_LIMIT_WINDOW_SECONDS: 900
+      RATE_LIMIT_MAX_REQUESTS: 10
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    command: uvicorn app.main.app:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:

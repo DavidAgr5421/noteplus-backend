@@ -1,0 +1,40 @@
+# Render Blueprint — NotePlus API
+# Uso: Dashboard → New → Blueprint → conecta este repo. Render crea el servicio
+# y pide los valores marcados con `sync: false`.
+services:
+  - type: web
+    name: noteplus-api
+    runtime: python
+    buildCommand: "pip install -r requirements.txt"
+    # Las migraciones Alembic corren antes de cada despliegue, nunca a mano.
+    preDeployCommand: "alembic upgrade head"
+    startCommand: "uvicorn app.main.app:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ENV
+        value: production
+      # Neon (asyncpg). OJO: cambiar el esquema a postgresql+asyncpg://
+      # Ej: postgresql+asyncpg://user:pass@ep-xxx.us-east-2.aws.neon.tech/noteplus
+      - key: DATABASE_URL
+        sync: false
+      # Solo si algún script/test lo usa (psycopg2, admite ?sslmode=require)
+      - key: SYNC_DATABASE_URL
+        sync: false
+      - key: DB_SSL
+        value: true
+      # Front en Vercel = cross-site → la cookie de refresh exige none (+ Secure auto en prod)
+      - key: COOKIE_SAMESITE
+        value: none
+      # URL pública de Vercel (después se suma el dominio propio si lo añades)
+      - key: CORS_ORIGINS
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN_MINUTES
+        value: 15
+      - key: JWT_REFRESH_EXPIRES_IN_DAYS
+        value: 7
