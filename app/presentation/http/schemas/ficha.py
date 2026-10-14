@@ -93,3 +93,5 @@ class FichaResponse(CamelModel):
     finalizada: bool
     instructor_id: str
     horarios: list[HorarioInput] = []
+    numero_estudiantes: int = 0
+    clases_restantes: int = 0

@@ -11,14 +11,24 @@ class SqlAlchemyFichaRepository:
 
     async def find_by_id(self, ficha_id: str):
         result = await self.session.execute(
-            select(FichaModel).options(selectinload(FichaModel.horarios)).where(FichaModel.id == ficha_id)
+            select(FichaModel)
+            .options(
+                selectinload(FichaModel.horarios),
+                selectinload(FichaModel.estudiantes),
+                selectinload(FichaModel.clases),
+            )
+            .where(FichaModel.id == ficha_id)
         )
         return result.scalar_one_or_none()
 
     async def find_by_id_and_instructor(self, ficha_id: str, instructor_id: str):
         result = await self.session.execute(
             select(FichaModel)
-            .options(selectinload(FichaModel.horarios))
+            .options(
+                selectinload(FichaModel.horarios),
+                selectinload(FichaModel.estudiantes),
+                selectinload(FichaModel.clases),
+            )
             .where(FichaModel.id == ficha_id, FichaModel.instructor_id == instructor_id)
         )
         return result.scalar_one_or_none()
@@ -26,7 +36,11 @@ class SqlAlchemyFichaRepository:
     async def find_by_instructor(self, instructor_id: str, archivada: bool):
         result = await self.session.execute(
             select(FichaModel)
-            .options(selectinload(FichaModel.horarios))
+            .options(
+                selectinload(FichaModel.horarios),
+                selectinload(FichaModel.estudiantes),
+                selectinload(FichaModel.clases),
+            )
             .where(FichaModel.instructor_id == instructor_id, FichaModel.archivada == archivada)
             .order_by(FichaModel.fecha_inicio.desc())
         )

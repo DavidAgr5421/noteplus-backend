@@ -22,6 +22,12 @@ def trimestre_de(fecha: date) -> str:
 
 
 def _to_response(ficha: FichaModel) -> FichaResponse:
+    num_estudiantes = len(ficha.estudiantes) if hasattr(ficha, "estudiantes") and ficha.estudiantes is not None else 0
+    if hasattr(ficha, "clases") and ficha.clases is not None and len(ficha.clases) > 0:
+        clases_restantes = sum(1 for c in ficha.clases if not c.realizada)
+    else:
+        clases_restantes = ficha.total_clases
+
     return FichaResponse(
         id=ficha.id,
         codigo=ficha.codigo,
@@ -37,6 +43,8 @@ def _to_response(ficha: FichaModel) -> FichaResponse:
             HorarioInput(dia_semana=h.dia_semana, hora=h.hora, duracion_minutos=h.duracion_minutos)
             for h in (ficha.horarios or [])
         ],
+        numero_estudiantes=num_estudiantes,
+        clases_restantes=clases_restantes,
     )
 
 
