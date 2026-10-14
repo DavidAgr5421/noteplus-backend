@@ -252,7 +252,7 @@ Cada regla tiene un ID estable. **Los tests y los commits deben referenciarlo** 
 
 ### Asistencia y clases
 - **RN-08** La asistencia se marca por `(clase, estudiante)` con estado `ASISTIO` o `NO_ASISTIO`; la justificación es opcional.
-- **RN-09** Una clase tiene `modalidad` (presencial/virtual) y `realizada` (sí/no), editables por el instructor. Si una clase se marca como **no realizada**, no se pueden registrar asistencias para ella.
+- **RN-09** Una clase tiene `modalidad` (presencial/virtual) y `realizada` (sí/no), editables por el instructor incluso antes de la fecha. Las asistencias se pueden registrar y modificar aunque la clase no esté marcada como realizada. Al guardar asistencias, el back marca la clase como realizada automáticamente si ya es su fecha (o pasó); si es futura, el front pregunta al docente si quiere marcarla.
 - **RN-10** El calendario muestra las clases de todas las fichas **activas** del instructor y resalta el día actual. "Hoy" se calcula en la zona horaria `America/Bogota` mediante el puerto `Clock`.
 - **RN-11** Las asistencias se pueden editar mientras la ficha no esté archivada, aunque esté finalizada (finalizar bloquea **notas**, no asistencia). ⚠️
 

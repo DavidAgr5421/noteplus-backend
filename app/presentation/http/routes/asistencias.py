@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -54,9 +55,8 @@ async def get_asistencias(clase_id: str, db: AsyncSession = Depends(get_db), cur
 @router.put("/{clase_id}/asistencias", response_model=list[AsistenciaResponse])
 async def save_asistencias(clase_id: str, payload: SaveAsistenciasRequest, db: AsyncSession = Depends(get_db), current=Depends(get_current_instructor)):
     clase, ficha = await _get_clase_checked(clase_id, current["instructor_id"], db)
-    # RN-09 if not realizada cannot register
-    if not clase.realizada:
-        raise HTTPException(status_code=409, detail="Clase no realizada, no se pueden registrar asistencias")
+    # RN-09: las asistencias se pueden registrar/modificar aunque la clase
+    # no esté marcada como realizada (`realizada` es estado informativo).
     # RN-11 asistencias editable even if finalizada — only ficha archivada blocked above
     # Update observacion if provided
     if payload.observacion is not None:
@@ -72,6 +72,12 @@ async def save_asistencias(clase_id: str, payload: SaveAsistenciasRequest, db: A
             raise HTTPException(status_code=404, detail=f"Estudiante {item.estudiante_id} no encontrado en la ficha")
         model = await repo.upsert(clase.id, item.estudiante_id, item.estado, item.justificacion)
         result_list.append(model)
+
+    # La clase queda marcada como realizada si ya es su fecha (o pasó).
+    # Si es futura, queda como está y el front pregunta al docente si marcarla.
+    if clase.fecha <= date.today() and not clase.realizada:
+        clase.realizada = True
+    await db.flush()
 
     # enrich names
     if result_list:

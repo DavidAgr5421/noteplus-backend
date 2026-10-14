@@ -22,9 +22,13 @@ def trimestre_de(fecha: date) -> str:
 
 
 def _to_response(ficha: FichaModel) -> FichaResponse:
-    num_estudiantes = len(ficha.estudiantes) if hasattr(ficha, "estudiantes") and ficha.estudiantes is not None else 0
-    if hasattr(ficha, "clases") and ficha.clases is not None and len(ficha.clases) > 0:
-        clases_restantes = sum(1 for c in ficha.clases if not c.realizada)
+    # Nota: usar __dict__ para no disparar lazy-load en sesión async
+    # (MissingGreenlet si estudiantes/clases no fueron cargados con selectinload).
+    est = ficha.__dict__.get("estudiantes")
+    num_estudiantes = len(est) if est is not None else 0
+    cls = ficha.__dict__.get("clases")
+    if cls is not None and len(cls) > 0:
+        clases_restantes = sum(1 for c in cls if not c.realizada)
     else:
         clases_restantes = ficha.total_clases
 
@@ -41,7 +45,7 @@ def _to_response(ficha: FichaModel) -> FichaResponse:
         instructor_id=ficha.instructor_id,
         horarios=[
             HorarioInput(dia_semana=h.dia_semana, hora=h.hora, duracion_minutos=h.duracion_minutos)
-            for h in (ficha.horarios or [])
+            for h in (ficha.__dict__.get("horarios") or [])
         ],
         numero_estudiantes=num_estudiantes,
         clases_restantes=clases_restantes,
@@ -116,8 +120,9 @@ async def create_ficha(
         )
         db.add(cm)
     await db.flush()
-    await db.refresh(ficha, attribute_names=["horarios"])
-    return _to_response(ficha)
+    # Re-fetch con selectinload para conteos correctos (evita lazy-load async)
+    fresh = await repo.find_by_id_and_instructor(ficha.id, current["instructor_id"])
+    return _to_response(fresh if fresh is not None else ficha)
 
 
 @router.get("/{ficha_id}", response_model=FichaResponse)
@@ -179,8 +184,9 @@ async def update_ficha(
 
     # For now, not regenerating clases on update to keep simple; Fase 0 spec says regenerar futuras sin asistencia
     await db.flush()
-    await db.refresh(ficha, attribute_names=["horarios"])
-    return _to_response(ficha)
+    db.expire(ficha)
+    fresh = await repo.find_by_id_and_instructor(ficha_id, current["instructor_id"])
+    return _to_response(fresh if fresh is not None else ficha)
 
 
 @router.delete("/{ficha_id}", status_code=204)
@@ -206,8 +212,9 @@ async def archive_ficha(ficha_id: str, db: AsyncSession = Depends(get_db), curre
         raise HTTPException(status_code=404, detail="Ficha no encontrada")
     ficha.archivada = True
     await db.flush()
-    await db.refresh(ficha, attribute_names=["horarios"])
-    return _to_response(ficha)
+    db.expire(ficha)
+    fresh = await repo.find_by_id_and_instructor(ficha_id, current["instructor_id"])
+    return _to_response(fresh if fresh is not None else ficha)
 
 
 @router.post("/{ficha_id}/unarchive", response_model=FichaResponse)
@@ -218,8 +225,9 @@ async def unarchive_ficha(ficha_id: str, db: AsyncSession = Depends(get_db), cur
         raise HTTPException(status_code=404, detail="Ficha no encontrada")
     ficha.archivada = False
     await db.flush()
-    await db.refresh(ficha, attribute_names=["horarios"])
-    return _to_response(ficha)
+    db.expire(ficha)
+    fresh = await repo.find_by_id_and_instructor(ficha_id, current["instructor_id"])
+    return _to_response(fresh if fresh is not None else ficha)
 
 
 @router.post("/{ficha_id}/finalize", response_model=FichaResponse)
@@ -232,8 +240,9 @@ async def finalize_ficha(ficha_id: str, db: AsyncSession = Depends(get_db), curr
         raise HTTPException(status_code=409, detail="Ficha archivada es de solo lectura")
     ficha.finalizada = True
     await db.flush()
-    await db.refresh(ficha, attribute_names=["horarios"])
-    return _to_response(ficha)
+    db.expire(ficha)
+    fresh = await repo.find_by_id_and_instructor(ficha_id, current["instructor_id"])
+    return _to_response(fresh if fresh is not None else ficha)
 
 
 @router.post("/{ficha_id}/reopen", response_model=FichaResponse)
@@ -244,5 +253,6 @@ async def reopen_ficha(ficha_id: str, db: AsyncSession = Depends(get_db), curren
         raise HTTPException(status_code=404, detail="Ficha no encontrada")
     ficha.finalizada = False
     await db.flush()
-    await db.refresh(ficha, attribute_names=["horarios"])
-    return _to_response(ficha)
+    db.expire(ficha)
+    fresh = await repo.find_by_id_and_instructor(ficha_id, current["instructor_id"])
+    return _to_response(fresh if fresh is not None else ficha)

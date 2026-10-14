@@ -141,8 +141,7 @@ async def update_clase(clase_id: str, payload: UpdateClaseRequest, db: AsyncSess
     if payload.modalidad is not None:
         clase.modalidad = payload.modalidad
     if payload.realizada is not None:
-        if payload.realizada and clase.fecha > date.today():
-            raise HTTPException(status_code=400, detail="La clase aún no se ha dado, no puede marcarse como realizada")
+        # `realizada` la decide el docente (incluso antes de la fecha).
         clase.realizada = payload.realizada
     if payload.observacion is not None:
         clase.observacion = payload.observacion
