@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     JWT_SECRET: str = "dev-jwt-secret-change-in-production-32chars!!"
     JWT_REFRESH_SECRET: str = "dev-refresh-secret-change-in-production-32chars!!"
-    JWT_EXPIRES_IN_MINUTES: int = 15
+    JWT_EXPIRES_IN_MINUTES: int = 60
     JWT_REFRESH_EXPIRES_IN_DAYS: int = 7
 
     PORT: int = 8000
