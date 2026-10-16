@@ -8,6 +8,7 @@ from app.presentation.http.schemas.actividad import (
     UpdateActividadRequest,
     ActividadResponse,
     SaveCalificacionesRequest,
+    CopiarActividadesRequest,
 )
 from app.infrastructure.persistence.repositories.ficha_repository import SqlAlchemyFichaRepository
 from app.infrastructure.persistence.repositories.actividad_repository import SqlAlchemyActividadRepository
@@ -169,6 +170,95 @@ async def delete_actividad(ficha_id: str, actividad_id: str, db: AsyncSession = 
     # Check if has children — if so, delete cascades but we should allow
     await repo.delete(act)
     return None
+
+
+@router.post("/fichas/{ficha_id}/copiar-actividades", response_model=list[ActividadResponse], status_code=201)
+async def copiar_actividades(
+    ficha_id: str,
+    payload: CopiarActividadesRequest,
+    db: AsyncSession = Depends(get_db),
+    current=Depends(get_current_instructor),
+):
+    if ficha_id == payload.origen_ficha_id:
+        raise HTTPException(status_code=400, detail="La ficha de origen y destino deben ser distintas")
+
+    ficha_dest = await _check_ficha(ficha_id, current["instructor_id"], db)
+    if ficha_dest.archivada or ficha_dest.finalizada:
+        raise HTTPException(status_code=409, detail="Ficha bloqueada, no se pueden modificar actividades")
+
+    await _check_ficha(payload.origen_ficha_id, current["instructor_id"], db)
+
+    repo = SqlAlchemyActividadRepository(db)
+    src_acts = await repo.find_by_ficha(payload.origen_ficha_id)
+    if not src_acts:
+        raise HTTPException(status_code=400, detail="La ficha de origen no tiene actividades definidas")
+
+    dest_acts = await repo.find_by_ficha(ficha_id)
+    if dest_acts:
+        if payload.reemplazar_existentes:
+            has_califs = await repo.has_calificaciones_for_ficha(ficha_id)
+            if has_califs:
+                raise HTTPException(
+                    status_code=409,
+                    detail="No se pueden reemplazar las actividades existentes porque la ficha ya tiene calificaciones registradas",
+                )
+            # Delete children first, then roots to respect FK constraints
+            for child in [a for a in dest_acts if a.parent_id is not None]:
+                await repo.delete(child)
+            for root in [a for a in dest_acts if a.parent_id is None]:
+                await repo.delete(root)
+            dest_acts = []
+
+    root_acts = [a for a in src_acts if a.parent_id is None]
+    child_acts = [a for a in src_acts if a.parent_id is not None]
+
+    id_map: dict[str, str] = {}
+    created_roots: list[ActividadModel] = []
+    created_children: list[ActividadModel] = []
+
+    for root in root_acts:
+        new_id = str(uuid.uuid4())
+        id_map[root.id] = new_id
+        created_roots.append(
+            ActividadModel(
+                id=new_id,
+                ficha_id=ficha_id,
+                parent_id=None,
+                nombre=root.nombre,
+                porcentaje=float(root.porcentaje),
+                fecha_limite=None,
+                orden=root.orden,
+            )
+        )
+
+    for child in child_acts:
+        new_parent_id = id_map.get(child.parent_id)
+        if not new_parent_id:
+            continue
+        new_id = str(uuid.uuid4())
+        id_map[child.id] = new_id
+        created_children.append(
+            ActividadModel(
+                id=new_id,
+                ficha_id=ficha_id,
+                parent_id=new_parent_id,
+                nombre=child.nombre,
+                porcentaje=float(child.porcentaje),
+                fecha_limite=None,
+                orden=child.orden,
+            )
+        )
+
+    all_new = created_roots + created_children
+    _validate_weights(dest_acts + all_new)
+
+    if created_roots:
+        await repo.save_all(created_roots)
+    if created_children:
+        await repo.save_all(created_children)
+
+    return [_to_resp(m) for m in all_new]
+
 
 
 # Calificaciones

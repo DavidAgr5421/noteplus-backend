@@ -4,6 +4,7 @@ from sqlalchemy import select
 from datetime import date
 import uuid
 
+from app.domain.errors import ConflictError
 from app.presentation.http.dependencies import get_db, get_current_instructor
 from app.presentation.http.schemas.ficha import CreateFichaRequest, UpdateFichaRequest, FichaResponse, HorarioInput
 from app.infrastructure.persistence.models.ficha_model import FichaModel
@@ -14,6 +15,119 @@ from app.infrastructure.persistence.repositories.actividad_repository import Sql
 from app.domain.services.class_schedule_generator import ClassScheduleGenerator, HorarioInput as DomainHorario
 
 router = APIRouter(prefix="/fichas", tags=["fichas"])
+
+DIAS_SEMANA_NOMBRES = {
+    0: "Domingo",
+    1: "Lunes",
+    2: "Martes",
+    3: "Miércoles",
+    4: "Jueves",
+    5: "Viernes",
+    6: "Sábado",
+}
+
+
+def _hora_a_minutos(hora: str) -> int:
+    partes = (hora or "00:00")[:5].split(":")
+    return int(partes[0]) * 60 + int(partes[1])
+
+
+def _minutos_a_hora(minutos: int) -> str:
+    h = (minutos // 60) % 24
+    m = minutos % 60
+    return f"{h:02d}:{m:02d}"
+
+
+async def _verificar_solapamiento_horarios(
+    repo: SqlAlchemyFichaRepository,
+    instructor_id: str,
+    horarios_propuestos: list[HorarioInput],
+    exclude_ficha_id: str | None = None,
+    accion: str = "crear",
+) -> None:
+    if not horarios_propuestos:
+        return
+
+    conflicts: list[dict] = []
+
+    # 1. Solapamiento dentro de la misma ficha
+    for i in range(len(horarios_propuestos)):
+        ha = horarios_propuestos[i]
+        start_a = _hora_a_minutos(ha.hora)
+        end_a = start_a + ha.duracion_minutos
+        for j in range(i + 1, len(horarios_propuestos)):
+            hb = horarios_propuestos[j]
+            if ha.dia_semana != hb.dia_semana:
+                continue
+            start_b = _hora_a_minutos(hb.hora)
+            end_b = start_b + hb.duracion_minutos
+            if start_a < end_b and start_b < end_a:
+                dia_nombre = DIAS_SEMANA_NOMBRES.get(ha.dia_semana, f"Día {ha.dia_semana}")
+                conflicts.append(
+                    {
+                        "fichaId": exclude_ficha_id or "",
+                        "fichaNombre": "Esta misma ficha",
+                        "fichaCodigo": "Horario interno",
+                        "diaSemana": ha.dia_semana,
+                        "diaNombre": dia_nombre,
+                        "horaExistenteInicio": _minutos_a_hora(start_a),
+                        "horaExistenteFin": _minutos_a_hora(end_a),
+                        "horaPropuestaInicio": _minutos_a_hora(start_b),
+                        "horaPropuestaFin": _minutos_a_hora(end_b),
+                        "isSameFicha": True,
+                    }
+                )
+
+    # 2. Solapamiento con otras fichas activas del instructor
+    fichas_activas = await repo.find_by_instructor(instructor_id, archivada=False)
+    for otra_ficha in fichas_activas:
+        if exclude_ficha_id and otra_ficha.id == exclude_ficha_id:
+            continue
+        if otra_ficha.finalizada:
+            continue
+        otros_horarios = otra_ficha.__dict__.get("horarios") or []
+        for hp in horarios_propuestos:
+            start_p = _hora_a_minutos(hp.hora)
+            end_p = start_p + hp.duracion_minutos
+            for he in otros_horarios:
+                if hp.dia_semana != he.dia_semana:
+                    continue
+                start_e = _hora_a_minutos(he.hora)
+                end_e = start_e + he.duracion_minutos
+                if start_p < end_e and start_e < end_p:
+                    dia_nombre = DIAS_SEMANA_NOMBRES.get(hp.dia_semana, f"Día {hp.dia_semana}")
+                    conflicts.append(
+                        {
+                            "fichaId": otra_ficha.id,
+                            "fichaNombre": otra_ficha.nombre,
+                            "fichaCodigo": otra_ficha.codigo,
+                            "diaSemana": hp.dia_semana,
+                            "diaNombre": dia_nombre,
+                            "horaExistenteInicio": _minutos_a_hora(start_e),
+                            "horaExistenteFin": _minutos_a_hora(end_e),
+                            "horaPropuestaInicio": _minutos_a_hora(start_p),
+                            "horaPropuestaFin": _minutos_a_hora(end_p),
+                            "isSameFicha": False,
+                        }
+                    )
+
+    if conflicts:
+        first = conflicts[0]
+        verbo = "crear la ficha" if accion == "crear" else "modificar el horario"
+        if first.get("isSameFicha"):
+            msg = (
+                f"No se puede {verbo} porque dos horarios de la misma ficha se solapan el día "
+                f"{first['diaNombre']} ({first['horaExistenteInicio']} - {first['horaExistenteFin']} "
+                f"con {first['horaPropuestaInicio']} - {first['horaPropuestaFin']})."
+            )
+        else:
+            msg = (
+                f"No se puede {verbo} porque el horario se solapa con la ficha "
+                f"\"{first['fichaNombre']}\" (Código: {first['fichaCodigo']}) el día {first['diaNombre']} "
+                f"de {first['horaExistenteInicio']} a {first['horaExistenteFin']} "
+                f"(horario propuesto: {first['horaPropuestaInicio']} a {first['horaPropuestaFin']})."
+            )
+        raise ConflictError(message=msg, details={"conflicts": conflicts, "accion": accion})
 
 
 def trimestre_de(fecha: date) -> str:
@@ -74,6 +188,15 @@ async def create_ficha(
     existing = await repo.find_by_unique(current["instructor_id"], payload.codigo, payload.fecha_inicio)
     if existing:
         raise HTTPException(status_code=409, detail="Ficha ya existe con ese código y fecha")
+
+    # Validar solapamiento de horarios con otras fichas activas
+    await _verificar_solapamiento_horarios(
+        repo=repo,
+        instructor_id=current["instructor_id"],
+        horarios_propuestos=payload.horarios,
+        exclude_ficha_id=None,
+        accion="crear",
+    )
 
     # Create ficha
     ficha = FichaModel(
@@ -148,6 +271,16 @@ async def update_ficha(
     # RN-05 read-only if archivada
     if ficha.archivada:
         raise HTTPException(status_code=409, detail="Ficha archivada es de solo lectura")
+
+    # Validar solapamiento de horarios antes de modificar
+    if payload.horarios is not None:
+        await _verificar_solapamiento_horarios(
+            repo=repo,
+            instructor_id=current["instructor_id"],
+            horarios_propuestos=payload.horarios,
+            exclude_ficha_id=ficha.id,
+            accion="modificar",
+        )
 
     # Update fields if provided
     if payload.codigo is not None:

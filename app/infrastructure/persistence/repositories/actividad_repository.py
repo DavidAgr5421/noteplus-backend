@@ -29,6 +29,11 @@ class SqlAlchemyActividadRepository:
         await self.session.refresh(actividad)
         return actividad
 
+    async def save_all(self, actividades: list[ActividadModel]):
+        self.session.add_all(actividades)
+        await self.session.flush()
+        return actividades
+
     async def delete(self, actividad: ActividadModel):
         await self.session.delete(actividad)
         await self.session.flush()

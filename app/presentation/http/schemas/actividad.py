@@ -77,3 +77,9 @@ class NotasResponse(CamelModel):
     nota_minima_aprobacion: float
     actividades: list[ActividadResponse]
     notas: list[NotaEstudiante]
+
+
+class CopiarActividadesRequest(CamelModel):
+    origen_ficha_id: str
+    reemplazar_existentes: bool = False
+
