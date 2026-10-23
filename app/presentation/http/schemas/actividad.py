@@ -1,5 +1,7 @@
-from pydantic import field_validator
 from datetime import date
+
+from pydantic import field_validator
+
 from app.presentation.http.schemas.base import CamelModel
 
 

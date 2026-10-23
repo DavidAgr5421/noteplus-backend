@@ -1,6 +1,7 @@
 """RN-03"""
 
 from datetime import date
+
 from app.domain.services.class_schedule_generator import ClassScheduleGenerator, HorarioInput
 
 

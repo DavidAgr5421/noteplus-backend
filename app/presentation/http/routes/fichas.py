@@ -1,18 +1,26 @@
+import uuid
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from datetime import date
-import uuid
 
 from app.domain.errors import ConflictError
-from app.presentation.http.dependencies import get_db, get_current_instructor
-from app.presentation.http.schemas.ficha import CreateFichaRequest, UpdateFichaRequest, FichaResponse, HorarioInput
+from app.domain.services.class_schedule_generator import ClassScheduleGenerator
+from app.domain.services.class_schedule_generator import HorarioInput as DomainHorario
+from app.infrastructure.persistence.models.clase_model import ClaseModel
 from app.infrastructure.persistence.models.ficha_model import FichaModel
 from app.infrastructure.persistence.models.horario_ficha_model import HorarioFichaModel
-from app.infrastructure.persistence.models.clase_model import ClaseModel
+from app.infrastructure.persistence.repositories.actividad_repository import (
+    SqlAlchemyActividadRepository,
+)
 from app.infrastructure.persistence.repositories.ficha_repository import SqlAlchemyFichaRepository
-from app.infrastructure.persistence.repositories.actividad_repository import SqlAlchemyActividadRepository
-from app.domain.services.class_schedule_generator import ClassScheduleGenerator, HorarioInput as DomainHorario
+from app.presentation.http.dependencies import get_current_instructor, get_db
+from app.presentation.http.schemas.ficha import (
+    CreateFichaRequest,
+    FichaResponse,
+    HorarioInput,
+    UpdateFichaRequest,
+)
 
 router = APIRouter(prefix="/fichas", tags=["fichas"])
 

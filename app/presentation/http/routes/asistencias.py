@@ -1,15 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException
 from datetime import date
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from app.presentation.http.dependencies import get_db, get_current_instructor
-from app.presentation.http.schemas.asistencia import SaveAsistenciasRequest, AsistenciaResponse
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.infrastructure.persistence.models.clase_model import ClaseModel
 from app.infrastructure.persistence.models.estudiante_model import EstudianteModel
-from app.infrastructure.persistence.models.asistencia_model import AsistenciaModel
+from app.infrastructure.persistence.repositories.asistencia_repository import (
+    SqlAlchemyAsistenciaRepository,
+)
 from app.infrastructure.persistence.repositories.ficha_repository import SqlAlchemyFichaRepository
-from app.infrastructure.persistence.repositories.asistencia_repository import SqlAlchemyAsistenciaRepository
+from app.presentation.http.dependencies import get_current_instructor, get_db
+from app.presentation.http.schemas.asistencia import AsistenciaResponse, SaveAsistenciasRequest
 
 router = APIRouter(prefix="/clases", tags=["asistencias"])
 

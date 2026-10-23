@@ -1,6 +1,8 @@
-from pydantic import field_validator
-from app.presentation.http.schemas.base import CamelModel
 import re
+
+from pydantic import field_validator
+
+from app.presentation.http.schemas.base import CamelModel
 
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 

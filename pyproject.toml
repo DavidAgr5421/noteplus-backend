@@ -38,6 +38,9 @@ target-version = "py311"
 select = ["E", "F", "I", "B", "C4", "UP"]
 ignore = []
 
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["Depends", "Query"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
@@ -50,3 +53,6 @@ testpaths = ["tests"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build]
+packages = ["app"]

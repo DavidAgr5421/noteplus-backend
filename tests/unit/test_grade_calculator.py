@@ -1,6 +1,6 @@
 """RN-17, RN-18"""
 
-from app.domain.services.grade_calculator import GradeCalculator, ActividadNode, CalificacionInput
+from app.domain.services.grade_calculator import ActividadNode, CalificacionInput, GradeCalculator
 
 
 def test_nota_final_faltantes_como_cero():

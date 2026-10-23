@@ -13,12 +13,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from app.infrastructure.config.settings import settings
-from app.infrastructure.persistence.database import Base  # noqa: F401 — keeps metadata registered via models import
 import app.infrastructure.persistence.models  # noqa: F401 — register tables
+from app.infrastructure.config.settings import settings
+from app.infrastructure.persistence.database import (
+    Base,  # noqa: F401 — keeps metadata registered via models import
+)
 from app.infrastructure.persistence.models.instructor_model import InstructorModel
-from app.infrastructure.security.password_hasher import BcryptPasswordHasher
 from app.infrastructure.security.jwt_service import JwtTokenService
+from app.infrastructure.security.password_hasher import BcryptPasswordHasher
 
 ADMIN_EMAIL = "admin@noteplus.local"
 ADMIN_PASSWORD = "5421"
@@ -67,13 +69,13 @@ def main():
         assert hasher.verify(ADMIN_PASSWORD, admin.password_hash), "hash verify failed"
         token = jwt_service.generate_access_token(admin.id, admin.email)
         refresh = jwt_service.generate_refresh_token(admin.id, admin.email)
-        print(f"\n✓ Seed OK")
+        print("\n✓ Seed OK")
         print(f"  email: {ADMIN_EMAIL}")
         print(f"  password: {ADMIN_PASSWORD}")
         print(f"  access_token (15m): {token[:50]}...")
         print(f"  refresh_token (7d): {refresh[:50]}...")
-        print(f"\nTest login:")
-        print(f'  curl -s http://localhost:8000/api/v1/health | jq .')
+        print("\nTest login:")
+        print('  curl -s http://localhost:8000/api/v1/health | jq .')
         print(f'  # (auth endpoints Fase 1) curl -X POST http://localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d \'{{"email":"{ADMIN_EMAIL}","password":"{ADMIN_PASSWORD}"}}\'')
 
 

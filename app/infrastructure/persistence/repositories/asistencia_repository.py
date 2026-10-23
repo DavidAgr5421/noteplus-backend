@@ -1,7 +1,7 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.infrastructure.persistence.models.asistencia_model import AsistenciaModel
-from app.infrastructure.persistence.models.clase_model import ClaseModel
 
 
 class SqlAlchemyAsistenciaRepository:

@@ -1,5 +1,6 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.infrastructure.persistence.models.actividad_model import ActividadModel
 from app.infrastructure.persistence.models.calificacion_model import CalificacionModel
 

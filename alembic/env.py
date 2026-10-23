@@ -1,7 +1,9 @@
 import asyncio
 from logging.config import fileConfig
+
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
+
 from alembic import context
 
 config = context.config
@@ -19,8 +21,8 @@ except Exception:
     pass
 
 # Import Base and all models so Alembic sees them
-from app.infrastructure.persistence.database import Base, get_connect_args  # noqa: E402
 import app.infrastructure.persistence.models  # noqa: F401,E402
+from app.infrastructure.persistence.database import Base, get_connect_args  # noqa: E402
 
 target_metadata = Base.metadata
 

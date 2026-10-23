@@ -1,13 +1,16 @@
 from datetime import datetime, timedelta
+
+import pytz
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-import pytz
 
-from app.presentation.http.dependencies import get_db, get_current_instructor
-from app.presentation.http.schemas.notificacion import Notificacion, NotificacionesResponse
-from app.infrastructure.persistence.repositories.ficha_repository import SqlAlchemyFichaRepository
-from app.infrastructure.persistence.repositories.actividad_repository import SqlAlchemyActividadRepository
+from app.infrastructure.persistence.repositories.actividad_repository import (
+    SqlAlchemyActividadRepository,
+)
 from app.infrastructure.persistence.repositories.clase_repository import SqlAlchemyClaseRepository
+from app.infrastructure.persistence.repositories.ficha_repository import SqlAlchemyFichaRepository
+from app.presentation.http.dependencies import get_current_instructor, get_db
+from app.presentation.http.schemas.notificacion import Notificacion, NotificacionesResponse
 
 router = APIRouter(prefix="/notificaciones", tags=["notificaciones"])
 
@@ -44,6 +47,7 @@ async def list_notificaciones(db: AsyncSession = Depends(get_db), current=Depend
     ficha_nombres: dict[str, str] = {}
     if proximas:
         from sqlalchemy import select
+
         from app.infrastructure.persistence.models.ficha_model import FichaModel
 
         result = await db.execute(select(FichaModel).where(FichaModel.id.in_(list({c.ficha_id for c in proximas}))))

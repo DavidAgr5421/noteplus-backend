@@ -1,16 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, Cookie
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from datetime import datetime, timezone
 import time
 from collections import defaultdict
 
-from app.presentation.http.dependencies import get_db, get_current_instructor
-from app.presentation.http.schemas.auth import RegisterRequest, LoginRequest, InstructorResponse
-from app.infrastructure.persistence.models.instructor_model import InstructorModel
-from app.infrastructure.security.password_hasher import BcryptPasswordHasher
-from app.infrastructure.security.jwt_service import JwtTokenService
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.infrastructure.config.settings import settings
+from app.infrastructure.persistence.models.instructor_model import InstructorModel
+from app.infrastructure.security.jwt_service import JwtTokenService
+from app.infrastructure.security.password_hasher import BcryptPasswordHasher
+from app.presentation.http.dependencies import get_current_instructor, get_db
+from app.presentation.http.schemas.auth import InstructorResponse, LoginRequest, RegisterRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 hasher = BcryptPasswordHasher()

@@ -1,18 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
-from app.presentation.http.dependencies import get_db, get_current_instructor
-from app.presentation.http.schemas.actividad import (
-    CreateActividadRequest,
-    UpdateActividadRequest,
-    ActividadResponse,
-    SaveCalificacionesRequest,
-    CopiarActividadesRequest,
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.infrastructure.persistence.models.actividad_model import ActividadModel
+from app.infrastructure.persistence.repositories.actividad_repository import (
+    SqlAlchemyActividadRepository,
 )
 from app.infrastructure.persistence.repositories.ficha_repository import SqlAlchemyFichaRepository
-from app.infrastructure.persistence.repositories.actividad_repository import SqlAlchemyActividadRepository
-from app.infrastructure.persistence.models.actividad_model import ActividadModel
+from app.presentation.http.dependencies import get_current_instructor, get_db
+from app.presentation.http.schemas.actividad import (
+    ActividadResponse,
+    CopiarActividadesRequest,
+    CreateActividadRequest,
+    SaveCalificacionesRequest,
+    UpdateActividadRequest,
+)
 
 router = APIRouter(tags=["actividades"])
 
@@ -42,7 +45,7 @@ def _promedios_redondeados(
     actividades: list[ActividadModel], califs
 ) -> dict[str, float | None]:
     """Promedio por actividad a 1 decimal (RN-18 half-up). None si no hay notas."""
-    from app.domain.services.grade_calculator import GradeCalculator, ActividadNode, round_half_up
+    from app.domain.services.grade_calculator import ActividadNode, GradeCalculator, round_half_up
 
     notas_por_actividad: dict[str, list[float]] = {}
     for c in califs:
@@ -294,15 +297,20 @@ async def get_notas(ficha_id: str, db: AsyncSession = Depends(get_db), current=D
     repo = SqlAlchemyActividadRepository(db)
     actividades = await repo.find_by_ficha(ficha_id)
     # fetch estudiantes
-    from app.infrastructure.persistence.models.estudiante_model import EstudianteModel
     from sqlalchemy import select
+
+    from app.infrastructure.persistence.models.estudiante_model import EstudianteModel
 
     result = await db.execute(select(EstudianteModel).where(EstudianteModel.ficha_id == ficha_id).order_by(EstudianteModel.nombre))
     estudiantes = list(result.scalars().all())
     califs = await repo.find_calificaciones_by_ficha(ficha_id)
 
     # Build grade calculation per estudiante
-    from app.domain.services.grade_calculator import GradeCalculator, ActividadNode, CalificacionInput
+    from app.domain.services.grade_calculator import (
+        ActividadNode,
+        CalificacionInput,
+        GradeCalculator,
+    )
 
     nodes = [ActividadNode(id=a.id, porcentaje=float(a.porcentaje), parent_id=a.parent_id) for a in actividades]
     # Validate pesos but not fail — just for info? We will not block

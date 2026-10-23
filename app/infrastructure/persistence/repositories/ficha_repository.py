@@ -1,8 +1,8 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
 from app.infrastructure.persistence.models.ficha_model import FichaModel
-from app.infrastructure.persistence.models.horario_ficha_model import HorarioFichaModel
 
 
 class SqlAlchemyFichaRepository:

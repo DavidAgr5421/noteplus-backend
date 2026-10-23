@@ -1,7 +1,8 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
-from sqlalchemy.orm import selectinload
 from datetime import date
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.infrastructure.persistence.models.clase_model import ClaseModel
 from app.infrastructure.persistence.models.ficha_model import FichaModel
 

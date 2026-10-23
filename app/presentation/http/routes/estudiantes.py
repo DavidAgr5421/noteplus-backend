@@ -1,23 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from pydantic import TypeAdapter, ValidationError as PydanticValidationError
-from sqlalchemy.ext.asyncio import AsyncSession
 import csv
 import io
 import uuid
 
-from app.presentation.http.dependencies import get_db, get_current_instructor
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import TypeAdapter
+from pydantic import ValidationError as PydanticValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.infrastructure.persistence.models.estudiante_model import EstudianteModel
+from app.infrastructure.persistence.repositories.estudiante_repository import (
+    SqlAlchemyEstudianteRepository,
+)
+from app.infrastructure.persistence.repositories.ficha_repository import SqlAlchemyFichaRepository
+from app.presentation.http.dependencies import get_current_instructor, get_db
 from app.presentation.http.schemas.estudiante import (
     CreateEstudianteRequest,
-    UpdateEstudianteRequest,
     EstudianteResponse,
     ImportBatchRequest,
     ImportBatchResponse,
     ImportEstudianteItem,
+    UpdateEstudianteRequest,
     validar_tipo_identificacion,
 )
-from app.infrastructure.persistence.repositories.ficha_repository import SqlAlchemyFichaRepository
-from app.infrastructure.persistence.repositories.estudiante_repository import SqlAlchemyEstudianteRepository
-from app.infrastructure.persistence.models.estudiante_model import EstudianteModel
 
 router = APIRouter(prefix="/fichas/{ficha_id}/estudiantes", tags=["estudiantes"])
 

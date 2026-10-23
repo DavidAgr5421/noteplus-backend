@@ -1,16 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from datetime import date, datetime
-import pytz
 
-from app.presentation.http.dependencies import get_db, get_current_instructor
-from app.presentation.http.schemas.clase import UpdateClaseRequest, ClaseResponse
+import pytz
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.infrastructure.persistence.models.clase_model import ClaseModel
 from app.infrastructure.persistence.models.ficha_model import FichaModel
 from app.infrastructure.persistence.models.horario_ficha_model import HorarioFichaModel
 from app.infrastructure.persistence.repositories.clase_repository import SqlAlchemyClaseRepository
 from app.infrastructure.persistence.repositories.ficha_repository import SqlAlchemyFichaRepository
+from app.presentation.http.dependencies import get_current_instructor, get_db
+from app.presentation.http.schemas.clase import ClaseResponse, UpdateClaseRequest
 
 router = APIRouter(prefix="/clases", tags=["clases"])
 

@@ -14,13 +14,13 @@ from app.presentation.http.middlewares.error_handler import (
     generic_error_handler,
     validation_error_handler,
 )
-from app.presentation.http.routes.health import router as health_router
-from app.presentation.http.routes.auth import router as auth_router
-from app.presentation.http.routes.fichas import router as fichas_router
-from app.presentation.http.routes.estudiantes import router as estudiantes_router
-from app.presentation.http.routes.clases import router as clases_router
-from app.presentation.http.routes.asistencias import router as asistencias_router
 from app.presentation.http.routes.actividades import router as actividades_router
+from app.presentation.http.routes.asistencias import router as asistencias_router
+from app.presentation.http.routes.auth import router as auth_router
+from app.presentation.http.routes.clases import router as clases_router
+from app.presentation.http.routes.estudiantes import router as estudiantes_router
+from app.presentation.http.routes.fichas import router as fichas_router
+from app.presentation.http.routes.health import router as health_router
 from app.presentation.http.routes.notificaciones import router as notificaciones_router
 
 jwt_service = JwtTokenService()

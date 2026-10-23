@@ -1,4 +1,5 @@
 from datetime import date
+
 from app.presentation.http.schemas.base import CamelModel
 
 

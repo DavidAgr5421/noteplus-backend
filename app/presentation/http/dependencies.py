@@ -1,6 +1,7 @@
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.infrastructure.persistence.database import AsyncSessionLocal
 from app.infrastructure.security.jwt_service import JwtTokenService
 

@@ -3,6 +3,7 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.infrastructure.config.settings import settings
 
+
 def get_connect_args() -> dict:
     """Neon exige TLS: con DB_SSL=true se negocia SSL en asyncpg."""
     return {"ssl": True} if settings.DB_SSL else {}

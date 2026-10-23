@@ -1,6 +1,7 @@
-from app.presentation.http.schemas.base import CamelModel
 from datetime import date
 from typing import Literal
+
+from app.presentation.http.schemas.base import CamelModel
 
 
 class UpdateClaseRequest(CamelModel):
