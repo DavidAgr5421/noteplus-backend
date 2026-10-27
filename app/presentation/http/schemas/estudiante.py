@@ -76,6 +76,8 @@ class EstudianteResponse(CamelModel):
     tipo_identificacion: str = "CC"
     email: str | None = None
     contacto: str | None = None
+    total_fallas: int = 0
+    fallas_injustificadas: int = 0
 
 
 class ImportEstudianteItem(CamelModel):

@@ -5,8 +5,10 @@ import uuid
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.infrastructure.persistence.models.asistencia_model import AsistenciaModel
 from app.infrastructure.persistence.models.estudiante_model import EstudianteModel
 from app.infrastructure.persistence.repositories.estudiante_repository import (
     SqlAlchemyEstudianteRepository,
@@ -36,7 +38,7 @@ async def _check_ficha(ficha_id: str, instructor_id: str, db: AsyncSession):
     return ficha
 
 
-def _to_resp(e: EstudianteModel) -> EstudianteResponse:
+def _to_resp(e: EstudianteModel, fallas: tuple[int, int] = (0, 0)) -> EstudianteResponse:
     return EstudianteResponse(
         id=e.id,
         ficha_id=e.ficha_id,
@@ -45,6 +47,8 @@ def _to_resp(e: EstudianteModel) -> EstudianteResponse:
         tipo_identificacion=getattr(e, "tipo_identificacion", None) or "CC",
         email=e.email,
         contacto=getattr(e, "contacto", None),
+        total_fallas=fallas[0],
+        fallas_injustificadas=fallas[1],
     )
 
 
@@ -57,7 +61,35 @@ async def list_estudiantes(ficha_id: str, db: AsyncSession = Depends(get_db), cu
         raise HTTPException(status_code=404, detail="Ficha no encontrada")
     repo = SqlAlchemyEstudianteRepository(db)
     estudiantes = await repo.find_by_ficha(ficha_id)
-    return [_to_resp(e) for e in estudiantes]
+
+    conteo_fallas: dict[str, tuple[int, int]] = {}
+    if estudiantes:
+        ids = [e.id for e in estudiantes]
+        fallas_stmt = (
+            select(
+                AsistenciaModel.estudiante_id,
+                func.count(AsistenciaModel.id).label("total_fallas"),
+                func.sum(
+                    case(
+                        (
+                            (AsistenciaModel.justificacion.is_(None)) | (func.trim(AsistenciaModel.justificacion) == ""),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ).label("fallas_injustificadas"),
+            )
+            .where(
+                AsistenciaModel.estudiante_id.in_(ids),
+                AsistenciaModel.estado == "NO_ASISTIO",
+            )
+            .group_by(AsistenciaModel.estudiante_id)
+        )
+        res = await db.execute(fallas_stmt)
+        for row in res:
+            conteo_fallas[row.estudiante_id] = (int(row.total_fallas or 0), int(row.fallas_injustificadas or 0))
+
+    return [_to_resp(e, conteo_fallas.get(e.id, (0, 0))) for e in estudiantes]
 
 
 @router.post("", response_model=EstudianteResponse, status_code=201)

@@ -107,4 +107,41 @@ async def list_notificaciones(db: AsyncSession = Depends(get_db), current=Depend
                 fecha=max(c.fecha for c in clases),
             ))
 
+    # 4. Alertas de deserción (más de 3 fallas acumuladas)
+    if fichas_activas:
+        from sqlalchemy import func, select
+        from app.infrastructure.persistence.models.asistencia_model import AsistenciaModel
+        from app.infrastructure.persistence.models.estudiante_model import EstudianteModel
+
+        f_ids = [f.id for f in fichas_activas]
+        stmt_desercion = (
+            select(
+                EstudianteModel.id,
+                EstudianteModel.nombre,
+                EstudianteModel.ficha_id,
+                func.count(AsistenciaModel.id).label("total_fallas"),
+            )
+            .join(AsistenciaModel, AsistenciaModel.estudiante_id == EstudianteModel.id)
+            .where(
+                EstudianteModel.ficha_id.in_(f_ids),
+                AsistenciaModel.estado == "NO_ASISTIO",
+            )
+            .group_by(EstudianteModel.id, EstudianteModel.nombre, EstudianteModel.ficha_id)
+            .having(func.count(AsistenciaModel.id) > 3)
+        )
+        res_desercion = await db.execute(stmt_desercion)
+        f_map = {f.id: f.nombre for f in fichas_activas}
+        for row in res_desercion:
+            f_nom = f_map.get(row.ficha_id, "Ficha")
+            notificaciones.append(
+                Notificacion(
+                    id=f"desercion:{row.id}",
+                    tipo="riesgo_desercion",
+                    titulo="Alerta de deserción",
+                    mensaje=f"{row.nombre} acumula {row.total_fallas} fallas en {f_nom}",
+                    link=f"/fichas/{row.ficha_id}/asistencias",
+                    fecha=today,
+                )
+            )
+
     return NotificacionesResponse(notificaciones=notificaciones)

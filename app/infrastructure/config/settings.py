@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     CORS_ORIGIN: str = "http://localhost:5173"
     CORS_ORIGINS: str = ""
+    CORS_ORIGIN_REGEX: str = r"^https:\/\/.*\.vercel\.app$"
     COOKIE_SAMESITE: str = "lax"
     DB_SSL: bool = False
     RATE_LIMIT_WINDOW_SECONDS: int = 900

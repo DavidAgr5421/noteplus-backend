@@ -69,7 +69,7 @@ def main():
         assert hasher.verify(ADMIN_PASSWORD, admin.password_hash), "hash verify failed"
         token = jwt_service.generate_access_token(admin.id, admin.email)
         refresh = jwt_service.generate_refresh_token(admin.id, admin.email)
-        print("\n✓ Seed OK")
+        print("\n[OK] Seed OK")
         print(f"  email: {ADMIN_EMAIL}")
         print(f"  password: {ADMIN_PASSWORD}")
         print(f"  access_token (15m): {token[:50]}...")
